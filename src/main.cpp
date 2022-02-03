@@ -22,6 +22,10 @@ const std::vector<char> charSet { '$','@','B','%','8','&','W','M','#','*','o','a
 const std::string chars = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 const std::string charsLess = " .:-=+*#%@";
 
+struct Vertex {
+    glm::vec3 position;
+    float brightness;
+};
 
 int getRows() {
 #ifdef __unix__
@@ -57,7 +61,7 @@ void showCursor(bool show) {
 }
 
 char getChar(float brightness) {
-    brightness = std::max(std::min(brightness, 0.0f), 1.0f);
+    brightness = std::min(std::max(brightness, 0.0f), 1.0f);
     return chars.substr((int)(brightness * (chars.length() - 1))).c_str()[0];
 }
 
@@ -73,11 +77,14 @@ float edgeFunction(glm::vec3& v0, glm::vec3& v1, glm::vec3& p) {
     return (p.x - v0.x) * (v1.y - v0.y) - (p.y - v0.y) * (v1.x - v0.x);
 }
 
-void draw(std::string& image, int width, int height, const std::vector<glm::vec3>& vertices) {
+void draw(std::string& image, int width, int height, const std::vector<Vertex>& vertices) {
     for (int i = 0; i < vertices.size(); i += 3) {
-        glm::vec3 v0 = vertices[i];
-        glm::vec3 v1 = vertices[i + 1];
-        glm::vec3 v2 = vertices[i + 2];
+        glm::vec3 v0 = vertices[i].position;
+        glm::vec3 v1 = vertices[i + 1].position;
+        glm::vec3 v2 = vertices[i + 2].position;
+        float c0 = vertices[i].brightness;
+        float c1 = vertices[i + 1].brightness;
+        float c2 = vertices[i + 2].brightness;
         float area = edgeFunction(v0, v1, v2);
         int minX = std::min(std::min(v0.x, v1.x), v2.x);
         int maxX = std::max(std::max(v0.x, v1.x), v2.x);
@@ -93,7 +100,7 @@ void draw(std::string& image, int width, int height, const std::vector<glm::vec3
                     w0 /= area;
                     w1 /= area;
                     w2 /= area;
-                    float c = w0 * 0.6 + w1 * 1 + w2 * 1;
+                    float c = w0 * c0 + w1 * c1 + w2 * c2;
                     image[y * width + x] = getChar(c);
                 }
             }
@@ -120,7 +127,7 @@ std::string generateImage(unsigned int width, unsigned int height) {
     float c1 = sin(ms.count() / 1000.0f * 0.63 + 0.3) / 2.0f + 0.5f;
     float c2 = sin(ms.count() / 1000.0f) / 2.0f + 0.5f;
 
-    std::vector<glm::vec3> vertices {
+    /*std::vector<glm::vec3> vertices {
         // { (cos(ms.count() / 1000.0f) / 2.0f + 0.5f) * 10 + 10, (sin(ms.count() / 1000.0f) / 2.0f + 0.5f) * 10 + 10, 0 },
         // { (cos(ms.count() / 1000.0f) / 2.0f + 0.5f) * 10 + 10, (sin(ms.count() / 1000.0f) / 2.0f + 0.5f) * 10 + 20, 0 },
         // { (cos(ms.count() / 1000.0f) / 2.0f + 0.5f) * 10 + 20, (sin(ms.count() / 1000.0f) / 2.0f + 0.5f) * 10 + 10, 0 },
@@ -130,9 +137,6 @@ std::string generateImage(unsigned int width, unsigned int height) {
         
     };
 
-    glm::quat q = glm::angleAxis(ms.count() / 1000.0f, glm::vec3(0, 0, 1));
-
-    glm::mat4 mat = glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, -40.0f, 0.0f));
     vertices[0] = mat * glm::vec4(vertices[0], 1.0f);
     vertices[1] = mat * glm::vec4(vertices[1], 1.0f);
     vertices[2] = mat * glm::vec4(vertices[2], 1.0f);
@@ -143,33 +147,32 @@ std::string generateImage(unsigned int width, unsigned int height) {
     vertices[1] = glm::inverse(mat) * glm::vec4(vertices[1], 1.0f);
     vertices[2] = glm::inverse(mat) * glm::vec4(vertices[2], 1.0f);
     
-    std::cout << vertices[0].x;
+    std::cout << vertices[0].x;*/
+
+    std::vector<Vertex> vertices {
+        { { 10.0f, 10.0f, 0.0f }, sin(ms.count() / 1000.0f * 20.0f) / 2 + 0.5 },
+        { { 10.0f, 50.0f, 0.0f }, 0.1f },
+        { { 50.0f, 10.0f, 0.0f }, 0.2f },
+        { { 0.0f, 0.0f, 0.0f }, sin(ms.count() / 1000.0f) / 2 + 0.5 },
+        { { 0.0f, 40.0f, 0.0f }, 0.8f },
+        { { 40.0f, 0.0f, 0.0f }, 1.0f }
+    };
+
+    glm::quat q = glm::angleAxis(ms.count() / 1000.0f, glm::vec3(0, 0, 1));
+    glm::mat4 mat = glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, -40.0f, 0.0f));
+
+    for (int i = 0; i < vertices.size(); i++) {
+        glm::vec3& pos = vertices[i].position;
+        pos = mat * glm::vec4(pos, 1.0f);
+        pos = q * pos;
+        for (int x = 0; x < 3; x++) {
+            if (i > 2) pos = q * pos;
+        }
+        pos = glm::inverse(mat) * glm::vec4(pos, 1.0f);
+    }
 
     draw(image, width, height, vertices);
 
-/*
-    float area = edgeFunction(v0, v1, v2);
-
-
-    for (int t = 0; t < nTris; t++) {
-        for (uint32_t y = 0; y < height; y++) {
-            for (uint32_t x = 0; x < width; x++) {
-                glm::vec2 p = { x + 0.5f, y + 0.5f };
-                float w0 = edgeFunction(v1, v2, p);
-                float w1 = edgeFunction(v2, v0, p);
-                float w2 = edgeFunction(v0, v1, p);
-                if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                    w0 /= area;
-                    w1 /= area;
-                    w2 /= area;
-                    float c = w0 * c0 + w1 * c1 + w2 * c2;
-                    int pos = y * width + x;
-                    image[pos] = getChar(c);
-                }
-            }
-        }
-    }
-    */
     return image;
 }
 
