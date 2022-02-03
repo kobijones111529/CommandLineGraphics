@@ -150,10 +150,10 @@ std::string generateImage(unsigned int width, unsigned int height) {
     std::cout << vertices[0].x;*/
 
     std::vector<Vertex> vertices {
-        { { 10.0f, 10.0f, 0.0f }, sin(ms.count() / 1000.0f * 20.0f) / 2 + 0.5 },
+        { { 10.0f, 10.0f, 0.0f }, std::sin(ms.count() / 1000.0f * 20.0f) / 2.0f + 0.5f },
         { { 10.0f, 50.0f, 0.0f }, 0.1f },
         { { 50.0f, 10.0f, 0.0f }, 0.2f },
-        { { 0.0f, 0.0f, 0.0f }, sin(ms.count() / 1000.0f) / 2 + 0.5 },
+        { { 0.0f, 0.0f, 0.0f }, std::sin(ms.count() / 1000.0f) / 2.0f + 0.5f },
         { { 0.0f, 40.0f, 0.0f }, 0.8f },
         { { 40.0f, 0.0f, 0.0f }, 1.0f }
     };
